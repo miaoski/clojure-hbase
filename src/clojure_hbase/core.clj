@@ -2,7 +2,7 @@
   (:refer-clojure :rename {get map-get})
   (:use clojure-hbase.internal)
   (:import [org.apache.hadoop.hbase HBaseConfiguration HConstants KeyValue]
-           [org.apache.hadoop.hbase.client HTablePool Get Put Delete Scan Result RowLock HTableInterface]
+           [org.apache.hadoop.hbase.client HTablePool Get Put Delete Scan Result HTableInterface]
            [org.apache.hadoop.hbase.util Bytes]))
 
 (def ^{:private true} put-class
@@ -255,18 +255,6 @@
                                 (.close ~(bindings 0)))))
    :else (throw (IllegalArgumentException. "Bindings must be symbols."))))
 
-(defn row-lock
-  "Returns a RowLock on the given row of the given table."
-  [#^HTableInterface table row]
-  (io!
-   (.lockRow table (to-bytes row))))
-
-(defn row-unlock
-  "Unlocks the row locked by the given RowLock."
-  [#^HTableInterface table row-lock]
-  (io!
-   (.unlockRow table row-lock)))
-
 (defprotocol HBaseOperation
   "This protocol defines an `execute` operation that can be defined on
    an object that represents some request against a table. Implement it
@@ -333,14 +321,12 @@
    specs with any construction directives removed."
   [row options]
   (let [row (to-bytes row)
-        directives #{:row-lock :use-existing}
+        directives #{:use-existing}
         cons-opts (apply hash-map (flatten (filter
                                             #(contains? directives
                                                         (first %)) options)))
         get-obj (cond (contains? cons-opts :use-existing)
                       (io! (:use-existing cons-opts))
-                      (contains? cons-opts :row-lock)
-                      (new Get row (:row-lock cons-opts))
                       :else
                       (new Get row))]
     [get-obj (filter #(not (contains? directives (first %))) options)]))
@@ -357,7 +343,6 @@
    :max-versions 1    ;; :max-versions <int>
    :time-range   1    ;; :time-range [start end]
    :time-stamp   1    ;; :time-stamp time
-   :row-lock     1    ;; :row-lock <a row lock you've got>
    :use-existing 1})  ;; :use-existing <some Get you've made>
 
 (defn- apply-columns
@@ -419,7 +404,6 @@
    :with-timestamp 2  ;; :with-timestamp ts [:value [:family ...] ...],
                       ;;  any number of :value or :values nested
    :write-to-WAL 1    ;; :write-to-WAL true/false
-   :row-lock     1    ;; :row-lock <a row lock you've got>
    :use-existing 1})  ;; :use-existing <a Put you've made>
 
 (defn- make-put
@@ -429,14 +413,12 @@
    non-construction options in the second."
   [row options]
   (let [row (to-bytes row)
-        directives #{:row-lock :use-existing}
+        directives #{:use-existing}
         cons-opts (apply hash-map (flatten (filter
                                             #(contains? directives
                                                         (first %)) options)))
         put-obj (cond (contains? cons-opts :use-existing)
                       (io! (:use-existing cons-opts))
-                      (contains? cons-opts :row-lock)
-                      (new Put row ^RowLock (:row-lock cons-opts))
                       :else
                       (new Put row))]
     [put-obj (filter #(not (contains? directives (first %))) options)]))
@@ -552,7 +534,6 @@
    :with-timestamp-before 2    ;; :with-timestamp-before <long> [:column [...] ...]
    :all-versions          1    ;; :all-versions [:column [:cf :cq]
                                ;;                :columns [:cf [...]] ...]
-   :row-lock              1    ;; :row-lock <a row lock you've got>
    :use-existing          1})  ;; :use-existing <a Put you've made>
 
 (defn- make-delete
@@ -562,16 +543,12 @@
    element, and the remaining, non-construction options in the second."
   [row options]
   (let [row (to-bytes row)
-        directives #{:row-lock :use-existing}
+        directives #{:use-existing}
         cons-opts (apply hash-map (flatten (filter
                                             #(contains? directives (first %))
                                             options)))
         delete-obj (cond (contains? cons-opts :use-existing)
                          (io! (:use-existing cons-opts))
-                         (contains? cons-opts :row-lock)
-                         (new Delete row
-                              HConstants/LATEST_TIMESTAMP
-                              (:row-lock cons-opts))
                          :else (new Delete row))]
     [delete-obj (filter #(not (contains? directives (first %))) options)]))
 

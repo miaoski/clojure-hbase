@@ -1,13 +1,14 @@
-(defproject clojure-hbase "0.92.3"
+(defproject clojure-hbase "0.98.12-1"
   :description "A convenient Clojure interface to HBase."
   :dependencies [[org.clojure/clojure "1.5.1"]
-                 [org.apache.hbase/hbase "0.92.2"]
+                 [org.apache.hbase/hbase-client "0.98.12-hadoop2"]
+                 [org.apache.hbase/hbase-server "0.98.12-hadoop2"]
                  [log4j/log4j "1.2.16" :exclusions [javax.mail/mail
                                                     javax.jms/jms
                                                     com.sun.jdmk/jmxtools
                                                     com.sun.jmx/jmxri]]
                  [org.clojure/tools.logging "0.2.3"]
-                 [org.apache.hbase/hbase "0.92.2" :classifier "tests" :scope "test"]
+                 [org.apache.hbase/hbase-client "0.98.12-hadoop2" :classifier "tests" :scope "test"]
                  [org.apache.hadoop/hadoop-test "1.1.0" :scope "test"]]
   :profiles {:clojure1.2 {:dependencies [[org.clojure/clojure "1.2.0"]]}
              :clojure1.3 {:dependencies [[org.clojure/clojure "1.3.0"]]}
